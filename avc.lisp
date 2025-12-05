@@ -1,5 +1,7 @@
 ;;;; programm parameters
 
+(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
+
 (defparameter *municipality-types* '("г" "пгт" "с" "д"))
 (defparameter *path-types* '("ул" "б-р" "ш"))
 (defparameter *building-types* '("д" "корп" "стр"))
@@ -7,12 +9,12 @@
 (defparameter *source-file* nil)
 (defparameter *destination-file* nil)
 
-(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
-
 (defparameter *current-line-verbatim* "")
 (defparameter *current-line-form* '(""))
 
 (defparameter *field-separators* ",.")
+
+(defparameter *frequent-adhesives* '("город" "проезд" "бульвар" "проспект" "улица" "площадь" "шоссе" "переулок" "набережная" "дом" "строение" "корпус"))
 
 ;;;; utils
 
@@ -233,7 +235,7 @@
 (defcommand ov output-valid-lines () (%output-validated-like%))
 (defcommand oi output-invalid-lines () (%output-validated-like% #'not))
 
-;;;; commands
+;;;; no-functional commands
 
 (define-symbol-macro q (quit))
 

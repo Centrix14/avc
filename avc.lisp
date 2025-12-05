@@ -1,17 +1,15 @@
 ;;;; utils
 
 (defun nil-as (alias value)
-  "interprets value as alias if value == nil"
   (if value value alias))
 
 (defun as-logical (value)
-  "interprets nil and other values as nil and T"
   (if value t nil))
 
-;; todo: rewrite into macro
-(defun one-of-strings (value list)
-  (declare (type string value))
-  (as-logical (member value list :test #'string=)))
+(defmacro define-one-of-p (name list test)
+  `(defun ,name (value)
+     (declare (type string value))
+     (as-logical (member value ,list :test ,test))))
 
 (defmacro define-string-of-p (name predicates chars &body post-conditions)
   `(defun ,name (value)
@@ -43,10 +41,6 @@
 (defun file-exists-p (path)
   (handler-case (probe-file path)
     (condition () nil)))
-
-;;;; todo:
-;;;; 1) выполнить все имеющиеся todo
-;;;; 2) добавить интерфейс с запуском (s), окончанием (e) и превалидацией (pv) - она должна обнаруживать неправильные записи и только
 
 (defparameter *municipality-types* '("г" "пгт" "с" "д"))
 (defparameter *path-types* '("ул" "б-р" "ш"))
@@ -115,27 +109,22 @@
 
 ;;;; address parts predicates
 
-(defun anythingp (value)
-  (declare (ignore value))
-  t)
+(defun anythingp (value) (declare (ignore value)) t)
 
 (define-string-of-p post-index-p (digit-char-p) nil
   (= 6 (length value)))
 
-(defun municipality-type-p (value)
-  (one-of-strings value *municipality-types*))
+(define-one-of-p municipality-type-p *municipality-types* #'string=)
 
 (define-string-of-p toponymp (alphanumericp) (#\Space #\-) t)
 
-(defun path-type-p (value)
-  (one-of-strings value *path-types*))
+(define-one-of-p path-type-p *path-types* #'string=)
 
-(defun building-type-p (value)
-  (one-of-strings value *building-types*))
+(define-one-of-p building-type-p *building-types* #'string=)
 
 (define-string-of-p building-number-p (alphanumericp) (#\/ #\- #\Space) t)
 
-;;;; operational functions
+;;;; commands
 
 (defcommand s start-file ()
   

@@ -1,3 +1,19 @@
+;;;; programm parameters
+
+(defparameter *municipality-types* '("г" "пгт" "с" "д"))
+(defparameter *path-types* '("ул" "б-р" "ш"))
+(defparameter *building-types* '("д" "корп" "стр"))
+
+(defparameter *source-file* nil)
+(defparameter *destination-file* nil)
+
+(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
+
+(defparameter *current-line-verbatim* "")
+(defparameter *current-line-form* '(""))
+
+(defparameter *field-separators* ",.")
+
 ;;;; utils
 
 (defun nil-as (alias value)
@@ -42,20 +58,6 @@
   (handler-case (probe-file path)
     (condition () nil)))
 
-(defparameter *municipality-types* '("г" "пгт" "с" "д"))
-(defparameter *path-types* '("ул" "б-р" "ш"))
-(defparameter *building-types* '("д" "корп" "стр"))
-
-(defparameter *source-file* nil)
-(defparameter *destination-file* nil)
-
-(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
-
-(defparameter *current-line-verbatim* "")
-(defparameter *current-line-form* '(""))
-
-(defparameter *field-separators* ",.")
-
 ;;;; validation functions
 
 (defun validate (pattern addr)
@@ -91,8 +93,8 @@
             (incf i))
 	  
           (do ((n 0 (1+ n))) ;; arity is an integer -> (incf i) arity times
-	      ((or (= n arity)
-		   (= i (length addr))))
+	          ((or (= n arity)
+		           (= i (length addr))))
 	    
             (unless (funcall matcher (nth i addr))
               (push (list rule i (nth i addr)) log))
@@ -204,16 +206,18 @@
   
   (not (format *destination-file* "~%")))
 
-(defcommand ovl output-valid-lines ()
-
+(defun %output-validated-like% (&optional (modifier #'values))
   (do ((line "" (next-line)))
       ((null line))
     (divide-line)
     
-    (when (validate-line)
+    (when (funcall modifier (validate-line))
       (output-line))))
 
-;;; commands
+(defcommand ov output-valid-lines () (%output-validated-like%))
+(defcommand oi output-invalid-lines () (%output-validated-like% #'not))
+
+;;;; commands
 
 (define-symbol-macro q (quit))
 

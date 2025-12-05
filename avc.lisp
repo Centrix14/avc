@@ -1,3 +1,7 @@
+;;;; todo:
+;;;; - добавить общую функцию очистки с flatten
+;;;; - параметризовать все комманды
+
 ;;;; programm parameters
 
 (defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
@@ -251,12 +255,27 @@
   (unless separator
     (setf separator (read-non-empty-line "Строка-разделитель: ")))
   
-  (setf *current-line-form*
-        (append
-         (subseq *current-line-form* 0 n)
-         (clean-and-trim-list
-          (%split-string-by-string% (nth n *current-line-form*) separator))
-         (subseq *current-line-form* (1+ n)))))
+  (setf (nth n *current-line-form*)
+        (clean-and-trim-list
+          (%split-string-by-string% (nth n *current-line-form*) separator))))
+
+(defun %search-adhesive% (str)
+  (dotimes (i (length *frequent-adhesives*) nil)
+
+    (when (search (nth i *frequent-adhesives*) str :test #'string=)
+      (return-from %search-adhesive% (nth i *frequent-adhesives*)))))
+
+(defcommand rfa redivide-frequent-adhesives ()
+  (let (elm adhesive)
+    
+    (dotimes (i (length *current-line-form*)
+                *current-line-form*)
+
+      (setf elm (nth i *current-line-form*))
+      
+      (setf adhesive (%search-adhesive% elm))
+      (when adhesive
+        (redivide-part i adhesive)))))
 
 ;;;; no-functional commands
 

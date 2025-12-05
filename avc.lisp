@@ -34,6 +34,10 @@
       ((not (string= input "")) input)
     (princ prompt)))
 
+(defun file-exists-p (path)
+  (handler-case (probe-file path)
+    (condition () nil)))
+
 ;;;; todo:
 ;;;; 1) выполнить все имеющиеся todo
 ;;;; 2) добавить интерфейс с запуском (s), окончанием (e) и превалидацией (pv) - она должна обнаруживать неправильные записи и только
@@ -153,7 +157,7 @@
   (let (source-file-name destination-file-name)
 
     (do ()
-	((probe-file source-file-name))
+	((file-exists-p source-file-name))
 
       (princ "--- Файл-источник должен существовать, назначение может быть создано автоматически")
       (terpri)
@@ -180,7 +184,11 @@
 
 (defun next-line ()
   (if *source-file*
-      (setf *current-line-verbatim* (read-line *source-file*))
+      (let ((line (read-line *source-file* nil 'eof)))
+        (if (stringp line)
+            (setf *current-line-verbatim* line)
+            (format t "! Достигнут конец файла")))
+
       (format t "! Файл-источник не назначен~%")))
 
 (defun separatorp (char)
@@ -235,9 +243,9 @@
     (when (validate *pattern* line-form)
       (setf *current-line-form* line-form)
       (output-line)
-      (format t "~a ~a~%" (validate *pattern* line-form) line))
+      )
     ))
-
+;; (format t "~a ~a~%" (validate *pattern* line-form) line)
 ;;; commands
 
 (define-symbol-macro q (quit))

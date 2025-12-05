@@ -244,16 +244,19 @@
 (defcommand ov output-valid-lines () (%output-validated-like%))
 (defcommand oi output-invalid-lines () (%output-validated-like% #'not))
 
-(defcommand rdp redivide-part ()
-  (let ((n (parse-integer (read-non-empty-line "№ части для редактирования: ")))
-        (separator (read-non-empty-line "Строка-разделитель: ")))
-
-    (setf *current-line-form*
-     (append
-      (subseq *current-line-form* 0 n)
-      (clean-and-trim-list
-       (%split-string-by-string% (nth n *current-line-form*) separator))
-      (subseq *current-line-form* (1+ n))))))
+(defcommand rdp redivide-part (&optional n separator)
+  (unless n
+    (setf n (parse-integer
+             (read-non-empty-line "№ части для редактирования: "))))
+  (unless separator
+    (setf separator (read-non-empty-line "Строка-разделитель: ")))
+  
+  (setf *current-line-form*
+        (append
+         (subseq *current-line-form* 0 n)
+         (clean-and-trim-list
+          (%split-string-by-string% (nth n *current-line-form*) separator))
+         (subseq *current-line-form* (1+ n)))))
 
 ;;;; no-functional commands
 

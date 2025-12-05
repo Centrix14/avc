@@ -25,17 +25,32 @@
 		       ,@(map 'list
 			      (lambda (c)
 				(list 'char= c 'char))
-			      chars)))
-	   (return-from ,name nil))
+			      chars))
+	     (return-from ,name nil)))
      t))
+
+(defun read-non-empty-line (&optional (prompt ""))
+  (do ((input "" (read-line)))
+      ((not (string= input "")) input)
+    (princ prompt)))
 
 ;;;; todo:
 ;;;; 1) выполнить все имеющиеся todo
 ;;;; 2) добавить интерфейс с запуском (s), окончанием (e) и превалидацией (pv) - она должна обнаруживать неправильные записи и только
 
-(defparameter +municipality-types+ '("г" "пгт" "с" "д"))
-(defparameter +path-types+ '("ул" "б-р" "ш"))
-(defparameter +building-types+ '("д" "корп" "стр"))
+(defparameter *municipality-types* '("г" "пгт" "с" "д"))
+(defparameter *path-types* '("ул" "б-р" "ш"))
+(defparameter *building-types* '("д" "корп" "стр"))
+
+(defparameter *source-file* nil)
+(defparameter *destination-file* nil)
+
+(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
+
+(defparameter *current-line-verbatim* "")
+(defparameter *current-line-form* '(""))
+
+(defparameter *field-separators* ",.")
 
 ;;;; validation functions
 
@@ -81,6 +96,13 @@
 
     (values (null log) log)))
 
+(defun captured-validate (pattern addr)
+  (multiple-value-bind (result log) (validate pattern addr)
+    (unless result
+      (princ log)
+      (terpri))
+    result))
+
 ;;;; address parts predicates
 
 (defun anythingp (value)
@@ -99,8 +121,8 @@
   (= 6 (length value)))
 
 (defun municipality-type-p (value)
-  "returns T for values from +municipality-types+"
-  (one-of-strings value +municipality-types+))
+  "returns T for values from *municipality-types*"
+  (one-of-strings value *municipality-types*))
 
 (defun toponymp (value)
   "returns T for values = [a-zA-Z0-9\- ]"
@@ -115,11 +137,127 @@
   t)
 
 (defun path-type-p (value)
-  "returns T for values from +path-types+"
-  (one-of-strings value +path-types+))
+  "returns T for values from *path-types*"
+  (one-of-strings value *path-types*))
 
 (defun building-type-p (value)
-  "returns T for values from +building-types+"
-  (one-of-strings value +building-types+))
+  "returns T for values from *building-types*"
+  (one-of-strings value *building-types*))
 
 (define-string-of-p building-number-p (alphanumericp) (#\/ #\- #\Space))
+
+;;;; operational functions
+
+(defun start-file ()
+  
+  (let (source-file-name destination-file-name)
+
+    (do ()
+	((probe-file source-file-name))
+
+      (princ "--- Файл-источник должен существовать, назначение может быть создано автоматически")
+      (terpri)
+      
+      (setf source-file-name (read-non-empty-line "Введите имя файла-источника: "))
+      (setf destination-file-name (read-non-empty-line "Введите имя файла-назначения: ")))
+
+    (setf *source-file* (open source-file-name
+			      :direction :input))
+    (setf *destination-file* (open destination-file-name
+				   :direction :output
+				   :if-exists :supersede
+				   :if-does-not-exist :create)))
+  t)
+
+(defun end-file ()
+  (when *source-file*
+    (close *source-file*)
+    (setf *source-file* nil))
+  
+  (when *destination-file*
+    (close *destination-file*)
+    (setf *destination-file* nil)))
+
+(defun next-line ()
+  (if *source-file*
+      (setf *current-line-verbatim* (read-line *source-file*))
+      (format t "! Файл-источник не назначен~%")))
+
+(defun separatorp (char)
+  (as-logical (position char *field-separators* :test #'char=)))
+
+(defun %split-string% (string &key (separatorp #'separatorp))
+  (loop :for beg = (position-if-not separatorp string)
+	:then (position-if-not separatorp string :start (1+ end))
+	:for end = (and beg (position-if separatorp string :start beg))
+	:when beg :collect (subseq string beg end)
+	:while end))
+
+(defun divide-line ()
+  (setf *current-line-form*
+	(map 'list
+	     (lambda (str)
+	       (string-trim " " str))
+	     (%split-string% *current-line-verbatim*))))
+
+(defun validate-line ()
+  (validate *pattern* *current-line-form*))
+
+(defun instant-correct-line ()
+
+  (prin1 *current-line-form*)
+  (terpri)
+
+  (setf *current-line-form*
+	(do ((form *current-line-form*
+		   (read-from-string
+		    (read-non-empty-line "Введите откорректированную форму: "))))
+	    ((captured-validate *pattern* form) form)
+	  ())))
+
+(defun output-line ()
+
+  (dolist (elm *current-line-form*)
+    (format *destination-file* "~a, " elm))
+  
+  (not (format *destination-file* "~%")))
+
+(defun output-valid-lines ()
+
+  (do ((line "" (read-line *source-file* nil "eof"))
+       (line-form '("") (map 'list
+			     (lambda (str)
+			       (string-trim " " str))
+			     (%split-string% line)))
+       )
+      ((string= line "eof"))
+
+    (when (validate *pattern* line-form)
+      (setf *current-line-form* line-form)
+      (output-line)
+      (format t "~a ~a~%" (validate *pattern* line-form) line))
+    ))
+
+;;; commands
+
+(define-symbol-macro q (quit))
+
+(define-symbol-macro s (start-file))
+(define-symbol-macro e (end-file))
+
+(define-symbol-macro nl (next-line))
+(define-symbol-macro n
+    (progn
+      (when *current-line-verbatim*
+	(divide-line)
+	(if (validate *pattern* *current-line-form*)
+	    (progn
+	      (output-line)
+	      (next-line))
+	    (format t "Адрес содержит ошибки~%")))))
+
+(define-symbol-macro ol (output-line))
+
+(define-symbol-macro dl (divide-line))
+(define-symbol-macro vl (validate-line))
+(define-symbol-macro icl (instant-correct-line))

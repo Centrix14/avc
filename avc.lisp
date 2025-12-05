@@ -232,20 +232,13 @@
 
 (defun output-valid-lines ()
 
-  (do ((line "" (read-line *source-file* nil "eof"))
-       (line-form '("") (map 'list
-			     (lambda (str)
-			       (string-trim " " str))
-			     (%split-string% line)))
-       )
-      ((string= line "eof"))
+  (do ((line "" (next-line)))
+      ((null line))
+    (divide-line)
+    
+    (when (validate-line)
+      (output-line))))
 
-    (when (validate *pattern* line-form)
-      (setf *current-line-form* line-form)
-      (output-line)
-      )
-    ))
-;; (format t "~a ~a~%" (validate *pattern* line-form) line)
 ;;; commands
 
 (define-symbol-macro q (quit))
@@ -265,6 +258,7 @@
 	    (format t "Адрес содержит ошибки~%")))))
 
 (define-symbol-macro ol (output-line))
+(define-symbol-macro ovl (output-valid-lines))
 
 (define-symbol-macro dl (divide-line))
 (define-symbol-macro vl (validate-line))

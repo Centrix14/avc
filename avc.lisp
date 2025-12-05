@@ -13,7 +13,7 @@
   (declare (type string value))
   (as-logical (member value list :test #'string=)))
 
-(defmacro define-string-of-p (name predicates chars)
+(defmacro define-string-of-p (name predicates chars &body post-conditions)
   `(defun ,name (value)
      (declare (type string value))
 
@@ -27,7 +27,8 @@
 				(list 'char= c 'char))
 			      chars))
 	     (return-from ,name nil)))
-     t))
+
+     ,@post-conditions))
 
 (defmacro defcommand (command-name function-name lambda-list &body body)
   `(progn
@@ -115,45 +116,24 @@
 ;;;; address parts predicates
 
 (defun anythingp (value)
-  "envelopes any readable Lisp value"
   (declare (ignore value))
   t)
 
-(defun post-index-p (value)
-  "returns T for post-indexes (6 digits)"
-  (declare (type string value))
-  
-  (loop for char across value do ;; todo: extract pattern into macro
-        (unless (digit-char-p char)
-          (return-from post-index-p nil)))
-  
+(define-string-of-p post-index-p (digit-char-p) nil
   (= 6 (length value)))
 
 (defun municipality-type-p (value)
-  "returns T for values from *municipality-types*"
   (one-of-strings value *municipality-types*))
 
-(defun toponymp (value)
-  "returns T for values = [a-zA-Z0-9\- ]"
-  (declare (type string value))
-
-  (loop for char across value do
-    
-        (unless (or (alphanumericp char)
-                    (char= #\Space char)
-                    (char= #\- char))
-          (return-from toponymp nil)))
-  t)
+(define-string-of-p toponymp (alphanumericp) (#\Space #\-) t)
 
 (defun path-type-p (value)
-  "returns T for values from *path-types*"
   (one-of-strings value *path-types*))
 
 (defun building-type-p (value)
-  "returns T for values from *building-types*"
   (one-of-strings value *building-types*))
 
-(define-string-of-p building-number-p (alphanumericp) (#\/ #\- #\Space))
+(define-string-of-p building-number-p (alphanumericp) (#\/ #\- #\Space) t)
 
 ;;;; operational functions
 

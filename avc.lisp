@@ -1,3 +1,34 @@
+;;;; utils
+
+(defun nil-as (alias value)
+  "interprets value as alias if value == nil"
+  (if value value alias))
+
+(defun as-logical (value)
+  "interprets nil and other values as nil and T"
+  (if value t nil))
+
+;; todo: rewrite into macro
+(defun one-of-strings (value list)
+  (declare (type string value))
+  (as-logical (member value list :test #'string=)))
+
+(defmacro define-string-of-p (name predicates chars)
+  `(defun ,name (value)
+     (declare (type string value))
+
+     (loop for char across value do
+	   (unless (or ,@(map 'list
+			      (lambda (f)
+				(list f 'char))
+			      predicates)
+		       ,@(map 'list
+			      (lambda (c)
+				(list 'char= c 'char))
+			      chars)))
+	   (return-from ,name nil))
+     t))
+
 ;;;; todo:
 ;;;; 1) выполнить все имеющиеся todo
 ;;;; 2) добавить интерфейс с запуском (s), окончанием (e) и превалидацией (pv) - она должна обнаруживать неправильные записи и только
@@ -12,9 +43,6 @@
   "validates addr by given pattern"
   (declare (type list pattern addr))
 
-  (when (> (length pattern) (length addr))
-    (return-from validate nil))
-  
   (let ((i 0)
         log arity matcher)
     
@@ -36,12 +64,17 @@
 
         (t (error "Invalid pattern rule ~a" rule)))
 
-      (if (eql arity 'n) ;; todo: separate branches into %functions%
-          (do ()
+      (if (eql arity 'n)
+	  
+          (do () ;; arity == n -> (incf i) until matcher returns T
               ((or (= i (length addr))
                    (not (funcall matcher (nth i addr)))))
             (incf i))
-          (dotimes (n arity)
+	  
+          (do ((n 0 (1+ n))) ;; arity is an integer -> (incf i) arity times
+	      ((or (= n arity)
+		   (= i (length addr))))
+	    
             (unless (funcall matcher (nth i addr))
               (push (list rule i (nth i addr)) log))
             (incf i))))
@@ -89,30 +122,8 @@
   "returns T for values from +building-types+"
   (one-of-strings value +building-types+))
 
-(defun building-number-p (value)
-  "returns T for values = [a-zA-Z0-9\/\- ]"
-  (declare (type string value))
+(define-string-of-p building-number-p (alphanumericp) (#\/ #\- #\Space))
 
-  (loop for char across value do
-
-        (unless (or (alphanumericp char)
-                    (char= #\/ char)
-                    (char= #\- char)
-                    (char= #\Space char))
-          (return-from building-number-p nil)))
-  t)
-
-;;;; utils
-
-(defun nil-as (alias value)
-  "interprets value as alias if value == nil"
-  (if value value alias))
-
-(defun as-logical (value)
-  "interprets nil and other values as nil and T"
-  (if value t nil))
-
-;; todo: rewrite into macro
-(defun one-of-strings (value list)
-  (declare (type string value))
-  (as-logical (member value list :test #'string=)))
+;; 125438, г. Москва, ул. Онежская, д. 3
+;; (defparameter tads '("125438" "г" "Москва" "ул" "Онежская" "д" "3"))
+;; (defparameter pat '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))

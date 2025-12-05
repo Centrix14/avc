@@ -177,12 +177,28 @@
 	:when beg :collect (subseq string beg end)
 	:while end))
 
+(defun %split-string-by-string% (main-string separator-string)
+  (let ((separator-l (length separator-string))
+        (i 0) result)
+
+    (do ((p (search separator-string main-string :start2 0 :test #'char=)))
+        ((not p))
+
+      (setf result (append result
+                           (list (subseq main-string i p)
+                                 separator-string)))
+
+      (incf i (+ separator-l (- p i)))
+      (setf p (search separator-string main-string :start2 i :test #'char=)))
+
+    (append result (list (subseq main-string i)))))
+
 (defcommand dl divide-line ()
   (setf *current-line-form*
-	(map 'list
-	     (lambda (str)
-	       (string-trim " " str))
-	     (%split-string% *current-line-verbatim*))))
+	    (map 'list
+	         (lambda (str)
+	           (string-trim " " str))
+	         (%split-string% *current-line-verbatim*))))
 
 (defcommand vl validate-line ()
   (validate *pattern* *current-line-form*))

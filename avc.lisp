@@ -60,6 +60,15 @@
   (handler-case (probe-file path)
     (condition () nil)))
 
+(defun clean-and-trim-list (list)
+  (do ((i 0 (1+ i))
+       elm result)
+      ((= i (length list)) result)
+
+    (setf elm (string-trim " " (nth i list)))
+    (when (string/= "" elm)
+      (setf result (append result (list elm))))))
+
 ;;;; validation functions
 
 (defun validate (pattern addr)
@@ -234,6 +243,17 @@
 
 (defcommand ov output-valid-lines () (%output-validated-like%))
 (defcommand oi output-invalid-lines () (%output-validated-like% #'not))
+
+(defcommand rdp redivide-part ()
+  (let ((n (parse-integer (read-non-empty-line "№ части для редактирования: ")))
+        (separator (read-non-empty-line "Строка-разделитель: ")))
+
+    (setf *current-line-form*
+     (append
+      (subseq *current-line-form* 0 n)
+      (clean-and-trim-list
+       (%split-string-by-string% (nth n *current-line-form*) separator))
+      (subseq *current-line-form* (1+ n))))))
 
 ;;;; no-functional commands
 

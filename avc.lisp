@@ -123,7 +123,3 @@
   (one-of-strings value +building-types+))
 
 (define-string-of-p building-number-p (alphanumericp) (#\/ #\- #\Space))
-
-;; 125438, г. Москва, ул. Онежская, д. 3
-;; (defparameter tads '("125438" "г" "Москва" "ул" "Онежская" "д" "3"))
-;; (defparameter pat '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))

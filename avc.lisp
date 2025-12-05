@@ -29,6 +29,11 @@
 	     (return-from ,name nil)))
      t))
 
+(defmacro defcommand (command-name function-name lambda-list &body body)
+  `(progn
+    (defun ,function-name ,lambda-list ,@body)
+    (define-symbol-macro ,command-name (,function-name))))
+
 (defun read-non-empty-line (&optional (prompt ""))
   (do ((input "" (read-line)))
       ((not (string= input "")) input)
@@ -152,12 +157,12 @@
 
 ;;;; operational functions
 
-(defun start-file ()
+(defcommand s start-file ()
   
   (let (source-file-name destination-file-name)
 
     (do ()
-	((file-exists-p source-file-name))
+	    ((file-exists-p source-file-name))
 
       (princ "--- Файл-источник должен существовать, назначение может быть создано автоматически")
       (terpri)
@@ -166,14 +171,14 @@
       (setf destination-file-name (read-non-empty-line "Введите имя файла-назначения: ")))
 
     (setf *source-file* (open source-file-name
-			      :direction :input))
+			                  :direction :input))
     (setf *destination-file* (open destination-file-name
-				   :direction :output
-				   :if-exists :supersede
-				   :if-does-not-exist :create)))
+				                   :direction :output
+				                   :if-exists :supersede
+				                   :if-does-not-exist :create)))
   t)
 
-(defun end-file ()
+(defcommand e end-file ()
   (when *source-file*
     (close *source-file*)
     (setf *source-file* nil))
@@ -182,7 +187,7 @@
     (close *destination-file*)
     (setf *destination-file* nil)))
 
-(defun next-line ()
+(defcommand nl next-line ()
   (if *source-file*
       (let ((line (read-line *source-file* nil 'eof)))
         (if (stringp line)
@@ -201,36 +206,36 @@
 	:when beg :collect (subseq string beg end)
 	:while end))
 
-(defun divide-line ()
+(defcommand dl divide-line ()
   (setf *current-line-form*
 	(map 'list
 	     (lambda (str)
 	       (string-trim " " str))
 	     (%split-string% *current-line-verbatim*))))
 
-(defun validate-line ()
+(defcommand vl validate-line ()
   (validate *pattern* *current-line-form*))
 
-(defun instant-correct-line ()
+(defcommand icl instant-correct-line ()
 
   (prin1 *current-line-form*)
   (terpri)
 
   (setf *current-line-form*
-	(do ((form *current-line-form*
-		   (read-from-string
-		    (read-non-empty-line "Введите откорректированную форму: "))))
-	    ((captured-validate *pattern* form) form)
-	  ())))
+	    (do ((form *current-line-form*
+		           (read-from-string
+		            (read-non-empty-line "Введите откорректированную форму: "))))
+	        ((captured-validate *pattern* form) form)
+	      ())))
 
-(defun output-line ()
+(defcommand ol output-line ()
 
   (dolist (elm *current-line-form*)
     (format *destination-file* "~a, " elm))
   
   (not (format *destination-file* "~%")))
 
-(defun output-valid-lines ()
+(defcommand ovl output-valid-lines ()
 
   (do ((line "" (next-line)))
       ((null line))
@@ -243,10 +248,6 @@
 
 (define-symbol-macro q (quit))
 
-(define-symbol-macro s (start-file))
-(define-symbol-macro e (end-file))
-
-(define-symbol-macro nl (next-line))
 (define-symbol-macro n
     (progn
       (when *current-line-verbatim*
@@ -256,10 +257,3 @@
 	      (output-line)
 	      (next-line))
 	    (format t "Адрес содержит ошибки~%")))))
-
-(define-symbol-macro ol (output-line))
-(define-symbol-macro ovl (output-valid-lines))
-
-(define-symbol-macro dl (divide-line))
-(define-symbol-macro vl (validate-line))
-(define-symbol-macro icl (instant-correct-line))

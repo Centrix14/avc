@@ -1,5 +1,5 @@
 ;;;; todo:
-;;;; - добавить общую функцию очистки с flatten
+;;;; - добавить post-adhesive (adhesive)
 ;;;; - параметризовать все комманды
 
 ;;;; programm parameters
@@ -18,7 +18,19 @@
 
 (defparameter *field-separators* ",.")
 
-(defparameter *frequent-adhesives* '("город" "проезд" "бульвар" "проспект" "улица" "площадь" "шоссе" "переулок" "набережная" "дом" "строение" "корпус"))
+(defparameter *frequent-adhesives*
+  (list-adhesives ("г" "город" "г")
+                  ("пр-д" "проезд" "пр-д")
+                  ("б-р" "бульвар" "б-р")
+                  ("пр-кт" "проспект" "пр-кт")
+                  ("ул" "улица" "ул")
+                  ("пл" "площадь" "пл")
+                  ("ш" "шоссе" "ш")
+                  ("пер" "переулок" "пер")
+                  ("наб" "набережная" "наб")
+                  ("д" "дом" "д")
+                  ("стр" "строение" "стр")
+                  ("корп" "корпус" "корп")))
 
 ;;;; utils
 
@@ -77,6 +89,59 @@
 
     (unless (equalp cleared-elm '(""))
       (setf result (append result cleared-elm)))))
+
+;;;; adhesive class
+
+(defclass adhesive ()
+  ((possible-forms
+    :type string
+    :initarg :possible-forms
+    :reader possible-forms)
+   
+   (correct-form
+    :type string
+    :initarg :correct-form
+    :reader correct-form)))
+
+(defgeneric identifiedp (adhesive str))
+(defgeneric correct-str (adhesive str))
+
+(defgeneric %search-possible-form% (adhesive string))
+
+(defmethod %search-possible-form% ((adh adhesive) (str string))
+  (let (result)
+
+    (dolist (form (possible-forms adh) nil)
+
+      (setf result (search form str :test #'string=))
+      (when result
+        (return-from %search-possible-form% form)))))
+
+(defmethod identifiedp ((adh adhesive) (str string))
+  (as-logical (%search-possible-form% adh str)))
+
+(defmethod correct-str ((adh adhesive) (str string))
+  (let (founded-form divided-str)
+    
+    (setf founded-form (%search-possible-form% adh str))
+    (setf divided-str (%split-string-by-string% str founded-form))
+
+    (dotimes (i (length divided-str) divided-str)
+
+      (when (string= founded-form (nth i divided-str))
+        (setf (nth i divided-str) (correct-form adh))))))
+
+(defmacro make-adhesive (correct-form possible-forms)
+  `(make-instance 'adhesive
+                  :correct-form ,correct-form
+                  :possible-forms ,possible-forms))
+
+(defmacro list-adhesives (&rest params)
+  (append '(list)
+          (map 'list
+               (lambda (param)
+                 `(make-adhesive ,(first param) (list ,@(rest param))))
+               params)))
 
 ;;;; validation functions
 
@@ -267,22 +332,23 @@
         (%split-string-by-string% (nth n *current-line-form*) separator)))
 
 (defun %search-adhesive% (str)
-  (dotimes (i (length *frequent-adhesives*) nil)
+  (dolist (adh *frequent-adhesives* nil)
 
-    (when (search (nth i *frequent-adhesives*) str :test #'string=)
-      (return-from %search-adhesive% (nth i *frequent-adhesives*)))))
+    (when (identifiedp adh str)
+      (return-from %search-adhesive% adh))))
 
 (defcommand rfa redivide-frequent-adhesives ()
-  (let (elm adhesive)
+  (let (elm adh)
     
     (dotimes (i (length *current-line-form*)
                 *current-line-form*)
 
       (setf elm (nth i *current-line-form*))
       
-      (setf adhesive (%search-adhesive% elm))
-      (when adhesive
-        (redivide-part i adhesive)))))
+      (setf adh (%search-adhesive% elm))
+      (when adh
+        (setf (nth i *current-line-form*)
+         (correct-str adh (nth i *current-line-form*)))))))
 
 ;;;; no-functional commands
 

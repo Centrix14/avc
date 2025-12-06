@@ -66,12 +66,17 @@
 
 (defun clean-and-trim-list (list)
   (do ((i 0 (1+ i))
-       elm result)
+       elm cleared-elm result)
       ((= i (length list)) result)
 
-    (setf elm (string-trim " " (nth i list)))
-    (when (string/= "" elm)
-      (setf result (append result (list elm))))))
+    (setf elm (nth i list))
+    (setf cleared-elm
+          (if (listp elm)
+              (clean-and-trim-list elm)
+              (list (string-trim " " elm))))
+
+    (unless (equalp cleared-elm '(""))
+      (setf result (append result cleared-elm)))))
 
 ;;;; validation functions
 
@@ -210,10 +215,11 @@
 
 (defcommand dl divide-line ()
   (setf *current-line-form*
-	    (map 'list
-	         (lambda (str)
-	           (string-trim " " str))
-	         (%split-string% *current-line-verbatim*))))
+        (%split-string% *current-line-verbatim*)))
+
+(defcommand cl cleanup-line ()
+  (setf *current-line-form*
+        (clean-and-trim-list *current-line-form*)))
 
 (defcommand vl validate-line ()
   (validate *pattern* *current-line-form*))
@@ -240,7 +246,9 @@
 (defun %output-validated-like% (&optional (modifier #'values))
   (do ((line "" (next-line)))
       ((null line))
+
     (divide-line)
+    (cleanup-line)
     
     (when (funcall modifier (validate-line))
       (output-line))))
@@ -256,8 +264,7 @@
     (setf separator (read-non-empty-line "Строка-разделитель: ")))
   
   (setf (nth n *current-line-form*)
-        (clean-and-trim-list
-          (%split-string-by-string% (nth n *current-line-form*) separator))))
+        (%split-string-by-string% (nth n *current-line-form*) separator)))
 
 (defun %search-adhesive% (str)
   (dotimes (i (length *frequent-adhesives*) nil)

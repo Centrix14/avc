@@ -2,36 +2,6 @@
 ;;;; - добавить post-adhesive (adhesive)
 ;;;; - параметризовать все комманды
 
-;;;; programm parameters
-
-(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
-
-(defparameter *municipality-types* '("г" "пгт" "с" "д"))
-(defparameter *path-types* '("ул" "б-р" "ш"))
-(defparameter *building-types* '("д" "корп" "стр"))
-
-(defparameter *source-file* nil)
-(defparameter *destination-file* nil)
-
-(defparameter *current-line-verbatim* "")
-(defparameter *current-line-form* '(""))
-
-(defparameter *field-separators* ",.")
-
-(defparameter *frequent-adhesives*
-  (list-adhesives ("г" "город" "г")
-                  ("пр-д" "проезд" "пр-д")
-                  ("б-р" "бульвар" "б-р")
-                  ("пр-кт" "проспект" "пр-кт")
-                  ("ул" "улица" "ул")
-                  ("пл" "площадь" "пл")
-                  ("ш" "шоссе" "ш")
-                  ("пер" "переулок" "пер")
-                  ("наб" "набережная" "наб")
-                  ("д" "дом" "д")
-                  ("стр" "строение" "стр")
-                  ("корп" "корпус" "корп")))
-
 ;;;; utils
 
 (defun nil-as (alias value)
@@ -113,7 +83,9 @@
 
     (dolist (form (possible-forms adh) nil)
 
-      (setf result (search form str :test #'string=))
+      (setf result (and (search form str :test #'string=)
+                        (string/= form str)))
+      
       (when result
         (return-from %search-possible-form% form)))))
 
@@ -142,6 +114,36 @@
                (lambda (param)
                  `(make-adhesive ,(first param) (list ,@(rest param))))
                params)))
+
+;;;; programm parameters
+
+(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
+
+(defparameter *municipality-types* '("г" "пгт" "с" "д"))
+(defparameter *path-types* '("ул" "б-р" "ш"))
+(defparameter *building-types* '("д" "корп" "стр"))
+
+(defparameter *source-file* nil)
+(defparameter *destination-file* nil)
+
+(defparameter *current-line-verbatim* "")
+(defparameter *current-line-form* '(""))
+
+(defparameter *field-separators* ",.")
+
+(defparameter *frequent-adhesives*
+  (list-adhesives ("г" "город" "г")
+                  ("пр-д" "проезд" "пр-д")
+                  ("б-р" "бульвар" "б-р")
+                  ("пр-кт" "проспект" "пр-кт")
+                  ("ул" "улица" "ул")
+                  ("пл" "площадь" "пл")
+                  ("ш" "шоссе" "ш")
+                  ("пер" "переулок" "пер")
+                  ("наб" "набережная" "наб")
+                  ("д" "дом" "д")
+                  ("стр" "строение" "стр")
+                  ("корп" "корпус" "корп")))
 
 ;;;; validation functions
 
@@ -348,7 +350,7 @@
       (setf adh (%search-adhesive% elm))
       (when adh
         (setf (nth i *current-line-form*)
-         (correct-str adh (nth i *current-line-form*)))))))
+              (correct-str adh (nth i *current-line-form*)))))))
 
 ;;;; no-functional commands
 

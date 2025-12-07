@@ -152,8 +152,8 @@
 
 (defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
 
-(defparameter *municipality-types* '("г" "пгт" "с" "д"))
-(defparameter *path-types* '("ул" "б-р" "ш"))
+(defparameter *municipality-types* '("г" "пгт" "район" "микрорайон" "пос"))
+(defparameter *path-types* '("ул" "б-р" "ш" "пр-д" "пр-кт" "пер" "наб"))
 (defparameter *building-types* '("д" "корп" "стр"))
 
 (defparameter *source-file* nil)
@@ -166,6 +166,9 @@
 
 (defparameter *frequent-adhesives*
   (list-adhesives ("г" "город" "г")
+                  ("пос" "поселение")
+                  ("район" "район")
+                  ("микрорайон" "микрорайон")
                   (("пр-д" "проезд" "пр-д") smart-adhesive)
                   (("б-р" "бульвар" "б-р") smart-adhesive)
                   (("пр-кт" "проспект" "пр-кт") smart-adhesive)
@@ -177,6 +180,9 @@
                   ("д" "дом" "д")
                   ("стр" "строение" "стр")
                   ("корп" "корпус" "корп")))
+
+(defparameter *line-storage* nil)
+(defparameter *errors-list* nil)
 
 ;;;; validation functions
 
@@ -385,6 +391,31 @@
         (setf (nth i *current-line-form*)
               (correct-str adh (nth i *current-line-form*)))))))
 
+(defcommand sl store-line ()
+  (setf *line-storage* (append *line-storage* (list *current-line-form*))))
+
+(defcommand svfl store-validated-and-fixed-lines ()
+  (do ((line (next-line) (next-line))
+       (line-number 1 (1+ line-number))
+       line-valid)
+      ((null line))
+
+    (divide-line)
+    (cleanup-line)
+
+    (setf line-valid (validate-line))
+    (unless line-valid
+      (redivide-frequent-adhesives)
+      (cleanup-line)
+
+      (multiple-value-bind (line-valid error-log) (validate-line)
+        (unless line-valid
+          (push (list line-number error-log) *errors-list*)))
+      )
+    
+    (store-line)
+    ))
+
 ;;;; no-functional commands
 
 (define-symbol-macro q (quit))
@@ -398,3 +429,14 @@
 	      (output-line)
 	      (next-line))
 	    (format t "Адрес содержит ошибки~%")))))
+
+(define-symbol-macro pl
+  (let ((n (parse-integer
+            (read-non-empty-line "Введите № строки для просмотра: "))))
+    (nth (1- n) *line-storage*)))
+
+(define-symbol-macro ps (values *current-line-verbatim* *current-line-form*))
+
+(define-symbol-macro cs (progn
+                          (setf *line-storage* nil)
+                          (setf *errors-list* nil)))

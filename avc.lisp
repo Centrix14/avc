@@ -73,24 +73,25 @@
     :initarg :correct-form
     :reader correct-form)))
 
-(defgeneric identifiedp (adhesive str))
+(defgeneric identifiedp (adhesive str &optional full-equal))
 (defgeneric correct-str (adhesive str))
 
-(defgeneric %search-possible-form% (adhesive string))
+(defgeneric %search-possible-form% (adhesive string &optional full-equal))
 
-(defmethod %search-possible-form% ((adh adhesive) (str string))
+(defmethod %search-possible-form% ((adh adhesive) (str string)
+                                   &optional full-equal)
   (let (result)
 
     (dolist (form (possible-forms adh) nil)
 
       (setf result (and (search form str :test #'string=)
-                        (string/= form str)))
+                        (if full-equal t (string/= form str))))
       
       (when result
         (return-from %search-possible-form% form)))))
 
-(defmethod identifiedp ((adh adhesive) (str string))
-  (as-logical (%search-possible-form% adh str)))
+(defmethod identifiedp ((adh adhesive) (str string) &optional full-equal)
+  (as-logical (%search-possible-form% adh str full-equal)))
 
 (defmethod correct-str ((adh adhesive) (str string))
   (let (founded-form divided-str)
@@ -102,6 +103,23 @@
 
       (when (string= founded-form (nth i divided-str))
         (setf (nth i divided-str) (correct-form adh))))))
+
+(defclass post-adhesive (adhesive) ())
+
+(defun %swap-list-elms% (list i1 i2)
+  (let ((tmp (nth i2 list)))
+    (setf (nth i2 list) (nth i1 list))
+    (setf (nth i1 list) tmp)))
+
+(defmethod correct-str ((adh post-adhesive) (str string))
+  (let ((result (call-next-method)))
+
+    (dotimes (i (length result) result)
+
+      (when (identifiedp adh (nth i result) t)
+        (%swap-list-elms% result i (1- i))))))
+
+;;;; class utilities
 
 (defmacro make-adhesive (correct-form possible-forms)
   `(make-instance 'adhesive

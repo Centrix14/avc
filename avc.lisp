@@ -121,8 +121,8 @@
 
 ;;;; class utilities
 
-(defmacro make-adhesive (correct-form possible-forms)
-  `(make-instance 'adhesive
+(defmacro make-adhesive (correct-form possible-forms &optional (class 'adhesive))
+  `(make-instance ',class
                   :correct-form ,correct-form
                   :possible-forms ,possible-forms))
 
@@ -130,7 +130,13 @@
   (append '(list)
           (map 'list
                (lambda (param)
-                 `(make-adhesive ,(first param) (list ,@(rest param))))
+                 (if (listp (first param))
+                     `(make-adhesive
+                          ,(first (first param))
+                          (list ,@(rest (first param)))
+                          ,(second param))
+                     `(make-adhesive ,(first param) (list ,@(rest param))))
+                 )
                params)))
 
 ;;;; programm parameters
@@ -151,8 +157,8 @@
 
 (defparameter *frequent-adhesives*
   (list-adhesives ("г" "город" "г")
-                  ("пр-д" "проезд" "пр-д")
-                  ("б-р" "бульвар" "б-р")
+                  (("пр-д" "проезд" "пр-д") post-adhesive)
+                  (("б-р" "бульвар" "б-р") post-adhesive)
                   ("пр-кт" "проспект" "пр-кт")
                   ("ул" "улица" "ул")
                   ("пл" "площадь" "пл")

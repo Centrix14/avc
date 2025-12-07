@@ -145,8 +145,7 @@
                           ,(first (first param))
                           (list ,@(rest (first param)))
                           ,(second param))
-                     `(make-adhesive ,(first param) (list ,@(rest param))))
-                 )
+                     `(make-adhesive ,(first param) (list ,@(rest param)))))
                params)))
 
 ;;;; programm parameters
@@ -167,14 +166,14 @@
 
 (defparameter *frequent-adhesives*
   (list-adhesives ("г" "город" "г")
-                  (("пр-д" "проезд" "пр-д") post-adhesive)
-                  (("б-р" "бульвар" "б-р") post-adhesive)
-                  ("пр-кт" "проспект" "пр-кт")
+                  (("пр-д" "проезд" "пр-д") smart-adhesive)
+                  (("б-р" "бульвар" "б-р") smart-adhesive)
+                  (("пр-кт" "проспект" "пр-кт") smart-adhesive)
                   ("ул" "улица" "ул")
-                  ("пл" "площадь" "пл")
+                  (("пл" "площадь" "пл") smart-adhesive)
                   ("ш" "шоссе" "ш")
-                  ("пер" "переулок" "пер")
-                  ("наб" "набережная" "наб")
+                  (("пер" "переулок" "пер") smart-adhesive)
+                  (("наб" "набережная" "наб") smart-adhesive)
                   ("д" "дом" "д")
                   ("стр" "строение" "стр")
                   ("корп" "корпус" "корп")))

@@ -104,20 +104,30 @@
       (when (string= founded-form (nth i divided-str))
         (setf (nth i divided-str) (correct-form adh))))))
 
-(defclass post-adhesive (adhesive) ())
+(defclass smart-adhesive (adhesive) ())
 
 (defun %swap-list-elms% (list i1 i2)
   (let ((tmp (nth i2 list)))
     (setf (nth i2 list) (nth i1 list))
     (setf (nth i1 list) tmp)))
 
-(defmethod correct-str ((adh post-adhesive) (str string))
-  (let ((result (call-next-method)))
+(defmethod correct-str ((adh smart-adhesive) (str string))
+  (let ((result (call-next-method))
+        adhesive-pos content-pos)
 
-    (dotimes (i (length result) result)
+    (dotimes (i (length result))
 
       (when (identifiedp adh (nth i result) t)
-        (%swap-list-elms% result i (1- i))))))
+        (setf adhesive-pos i))
+      
+      (unless (identifiedp adh (nth i result) t)
+        (unless (string= "" (nth i result))
+          (setf content-pos i))))
+    
+    (when (> adhesive-pos content-pos)
+      (%swap-list-elms% result adhesive-pos content-pos))
+
+    result))
 
 ;;;; class utilities
 

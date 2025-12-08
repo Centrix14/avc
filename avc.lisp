@@ -181,11 +181,11 @@
 
 ;;;; programm parameters
 
-(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
+(defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p (anythingp n)))
 
-(defparameter *municipality-types* '("г" "пгт" "район" "микрорайон" "пос"))
-(defparameter *path-types* '("ул" "б-р" "ш" "пр-д" "пр-кт" "пер" "наб" "пл"))
-(defparameter *building-types* '("д" "корп" "стр"))
+(defparameter *municipality-types* '("г" "пгт" "пос" "деревня"))
+(defparameter *path-types* '("ул" "б-р" "ш" "пр-д" "пр-кт" "пер" "наб" "пл" "микрорайон" "район" "ал" "тупик" "квартал"))
+(defparameter *building-types* '("д" "корп" "стр" "вл"))
 
 (defparameter *source-file* nil)
 (defparameter *destination-file* nil)
@@ -200,6 +200,7 @@
                   (("пос" "поселение" "пос") smart-spaced-adhesive)
                   (("район" "район") smart-spaced-adhesive)
                   (("микрорайон" "микрорайон" "мкр") smart-spaced-adhesive)
+                  (("деревня" "деревня") adhesive)
                   (("пр-д" "проезд" "пр-д") smart-spaced-adhesive)
                   (("б-р" "бульвар" "б-р") smart-spaced-adhesive)
                   (("пр-кт" "проспект" "пр-кт") smart-spaced-adhesive)
@@ -208,9 +209,12 @@
                   (("ш" "шоссе" "ш") smart-spaced-adhesive)
                   (("пер" "переулок" "пер") smart-spaced-adhesive)
                   (("наб" "набережная" "наб") smart-spaced-adhesive)
+                  (("тупик" "тупик") smart-adhesive)
+                  (("квартал" "квартал") adhesive)
                   (("д" "дом" "д") smart-predigit-adhesive)
                   (("стр" "строение" "стр") smart-spaced-adhesive)
-                  (("корп" "корпус" "корп") smart-spaced-adhesive)))
+                  (("корп" "корпус" "корп") smart-spaced-adhesive)
+                  (("помещ" "помещение" "помещ") smart-spaced-adhesive)))
 
 (defparameter *line-storage* nil)
 (defparameter *errors-list* nil)
@@ -448,10 +452,18 @@
     ))
 
 (defcommand per print-error-report ()
-	    (dolist (entry *errors-list*)
-	      (destructuring-bind (n err) entry
-		(format *destination-file* "№ ~3a ~s~%~a~%~%" n (nth (1- n) *line-storage*) err))
-	      ))
+  (dolist (entry *errors-list*)
+	(destructuring-bind (n err) entry
+	  (format *destination-file* "№ ~3a ~s~%~a~%~%" n (nth (1- n) *line-storage*) err))
+	))
+
+(defcommand el edit-line ()
+  (let ((n (1- (parse-integer (read-non-empty-line "№ строки: ")))))
+    (prin1 (nth n *line-storage*))
+    (terpri)
+    
+    (setf (nth n *line-storage*)
+          (read-from-string (read-non-empty-line ": ")))))
 
 ;;;; no-functional commands
 

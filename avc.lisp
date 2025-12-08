@@ -1,5 +1,5 @@
 ;;;; todo:
-;;;; - добавить post-adhesive (adhesive)
+;;;; - добавить распознавание внутренних территорий города (Зеленоград, и т. д.)
 ;;;; - параметризовать все комманды
 
 ;;;; utils
@@ -76,7 +76,11 @@
 (defgeneric identifiedp (adhesive str &optional full-equal))
 (defgeneric correct-str (adhesive str))
 
+(defgeneric %careful-search% (adhesive substring main-string))
 (defgeneric %search-possible-form% (adhesive string &optional full-equal))
+
+(defmethod %careful-search% ((adh adhesive) (sub string) (main string))
+  (search sub main :test #'string=))
 
 (defmethod %search-possible-form% ((adh adhesive) (str string)
                                    &optional full-equal)
@@ -84,7 +88,7 @@
 
     (dolist (form (possible-forms adh) nil)
 
-      (setf result (and (search form str :test #'string=)
+      (setf result (and (%careful-search% adh form str)
                         (if full-equal t (string/= form str))))
       
       (when result
@@ -129,6 +133,33 @@
 
     result))
 
+(defclass smart-spaced-adhesive (smart-adhesive) ())
+
+(defmethod %careful-search% ((adh smart-spaced-adhesive) (sub string) (main string))
+  (let ((result (call-next-method)))
+    (unless result (return-from %careful-search% result))
+
+    (if (and (or (= 0 result)
+		 (char= #\Space (elt main (1- result))))
+	     (or (= (length main) (+ result (length sub)))
+		 (char= #\Space (elt main (+ result (length sub))))))
+	result
+	nil)))
+
+(defclass smart-predigit-adhesive (smart-adhesive) ())
+
+(defmethod %careful-search% ((adh smart-predigit-adhesive) (sub string) (main string))
+  (let ((result (call-next-method)))
+    (unless result (return-from %careful-search% result))
+
+    (if (and (or (= 0 result)
+		 (char= #\Space (elt main (1- result))))
+	     (or (= (length main) (+ result (length sub)))
+		 (char= #\Space (elt main (+ result (length sub))))
+		 (digit-char-p (elt main (+ result (length sub))))))
+	result
+	nil)))
+
 ;;;; class utilities
 
 (defmacro make-adhesive (correct-form possible-forms &optional (class 'adhesive))
@@ -153,7 +184,7 @@
 (defparameter *pattern* '(post-index-p municipality-type-p toponymp path-type-p toponymp building-type-p building-number-p anythingp))
 
 (defparameter *municipality-types* '("г" "пгт" "район" "микрорайон" "пос"))
-(defparameter *path-types* '("ул" "б-р" "ш" "пр-д" "пр-кт" "пер" "наб"))
+(defparameter *path-types* '("ул" "б-р" "ш" "пр-д" "пр-кт" "пер" "наб" "пл"))
 (defparameter *building-types* '("д" "корп" "стр"))
 
 (defparameter *source-file* nil)
@@ -165,21 +196,21 @@
 (defparameter *field-separators* ",.")
 
 (defparameter *frequent-adhesives*
-  (list-adhesives ("г" "город" "г")
-                  ("пос" "поселение")
-                  ("район" "район")
-                  ("микрорайон" "микрорайон")
-                  (("пр-д" "проезд" "пр-д") smart-adhesive)
-                  (("б-р" "бульвар" "б-р") smart-adhesive)
-                  (("пр-кт" "проспект" "пр-кт") smart-adhesive)
-                  ("ул" "улица" "ул")
-                  (("пл" "площадь" "пл") smart-adhesive)
-                  ("ш" "шоссе" "ш")
-                  (("пер" "переулок" "пер") smart-adhesive)
-                  (("наб" "набережная" "наб") smart-adhesive)
-                  ("д" "дом" "д")
-                  ("стр" "строение" "стр")
-                  ("корп" "корпус" "корп")))
+  (list-adhesives (("г" "город" "г") smart-spaced-adhesive)
+                  (("пос" "поселение" "пос") smart-spaced-adhesive)
+                  (("район" "район") smart-spaced-adhesive)
+                  (("микрорайон" "микрорайон" "мкр") smart-spaced-adhesive)
+                  (("пр-д" "проезд" "пр-д") smart-spaced-adhesive)
+                  (("б-р" "бульвар" "б-р") smart-spaced-adhesive)
+                  (("пр-кт" "проспект" "пр-кт") smart-spaced-adhesive)
+                  (("ул" "улица" "ул") smart-spaced-adhesive)
+                  (("пл" "площадь" "пл") smart-spaced-adhesive)
+                  (("ш" "шоссе" "ш") smart-spaced-adhesive)
+                  (("пер" "переулок" "пер") smart-spaced-adhesive)
+                  (("наб" "набережная" "наб") smart-spaced-adhesive)
+                  (("д" "дом" "д") smart-predigit-adhesive)
+                  (("стр" "строение" "стр") smart-spaced-adhesive)
+                  (("корп" "корпус" "корп") smart-spaced-adhesive)))
 
 (defparameter *line-storage* nil)
 (defparameter *errors-list* nil)
@@ -415,6 +446,12 @@
     
     (store-line)
     ))
+
+(defcommand per print-error-report ()
+	    (dolist (entry *errors-list*)
+	      (destructuring-bind (n err) entry
+		(format *destination-file* "№ ~3a ~s~%~a~%~%" n (nth (1- n) *line-storage*) err))
+	      ))
 
 ;;;; no-functional commands
 

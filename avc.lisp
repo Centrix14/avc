@@ -461,6 +461,13 @@
     (setf (nth n *line-storage*)
           (read-from-string (read-non-empty-line ": ")))))
 
+(defcommand osl output-stored-lines ()
+  (dolist (addr *line-storage*)
+    (format *destination-file* "\"")
+    (dolist (elm addr)
+      (format *destination-file* "~a," elm))
+    (format *destination-file* "\"~%")))
+
 ;;;; no-functional commands
 
 (define-symbol-macro q (quit))
